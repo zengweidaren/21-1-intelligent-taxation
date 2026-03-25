@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能财务部 - 3D办公室</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      overflow: hidden;
+      background: #1a1a2e;
+    }
+    #info {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      text-align: center;
+      z-index: 100;
+      background: rgba(0,0,0,0.6);
+      padding: 15px 30px;
+      border-radius: 25px;
+      backdrop-filter: blur(10px);
+    }
+    #info h1 {
+      font-size: 24px;
+      margin-bottom: 5px;
+    }
+    #info p {
+      font-size: 14px;
+      color: #aaa;
+    }
+    #loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 20px;
+      z-index: 200;
+    }
+    #click-hint {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.7);
+      font-size: 14px;
+      z-index: 100;
+      background: rgba(0,0,0,0.5);
+      padding: 10px 20px;
+      border-radius: 20px;
+    }
+    #desk-info {
+      position: fixed;
+      top: 50%;
+      right: 30px;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,0.95);
+      padding: 20px;
+      border-radius: 12px;
+      min-width: 200px;
+      display: none;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+    #desk-info h3 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+    #desk-info p {
+      color: #666;
+      font-size: 14px;
+      margin: 5px 0;
+    }
+    #desk-info .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #999;
+    }
+    #back-wall-info {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      padding: 15px 30px;
+      border-radius: 12px;
+      display: none;
+      box-shadow: 0 10px 40px rgba(102, 126, 234, 0.4);
+    }
+    #back-wall-info h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <h1>🏢 智能财务部</h1>
+    <p>3D虚拟办公室 · 拖拽旋转查看 · 点击工位了解详情</p>
+  </div>
+  
+  <div id="loading">加载中...</div>
+  <div id="click-hint">🖱️ 拖拽旋转 | 滚轮缩放 | 点击工位查看人员</div>
+  
+  <div id="desk-info">
+    <button class="close-btn" onclick="closeDeskInfo()">×</button>
+    <h3 id="desk-name">工位 1</h3>
+    <p id="desk-person">姓名：张三</p>
+    <p id="desk-title">职位：会计</p>
+  </div>
+  
+  <div id="back-wall-info">
+    <h3>🖼️ 文化墙</h3>
+    <p>12个月事迹 | 表彰墙</p>
+    <p style="font-size:12px;margin-top:5px;color:rgba(255,255,255,0.8);">点击文化墙区域查看详情</p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/examples/js/controls/OrbitControls.js"></script>
+  
+  <script>
+    // 场景设置
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a2e);
+    scene.fog = new THREE.Fog(0x1a1a2e, 30, 80);
+
+    // 相机
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 15, 25);
+
+    // 渲染器
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    // 控制器
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxPolarAngle = Math.PI / 2.1;
+    controls.minDistance = 10;
+    controls.maxDistance = 50;
+
+    // 灯光
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    mainLight.position.set(10, 20, 10);
+    mainLight.castShadow = true;
+    mainLight.shadow.mapSize.width = 2048;
+    mainLight.shadow.mapSize.height = 2048;
+    mainLight.shadow.camera.near = 0.5;
+    mainLight.shadow.camera.far = 50;
+    mainLight.shadow.camera.left = -30;
+    mainLight.shadow.camera.right = 30;
+    mainLight.shadow.camera.top = 30;
+    mainLight.shadow.camera.bottom = -30;
+    scene.add(mainLight);
+
+    // 地板
+    const floorGeometry = new THREE.PlaneGeometry(60, 40);
+    const floorMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x2d3748,
+      roughness: 0.8
+    });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    // 地板网格线
+    const gridHelper = new THREE.GridHelper(60, 30, 0x4a5568, 0x3d4452);
+    scene.add(gridHelper);
+
+    // 创建工位
+    const desks = [];
+    const deskGroup = new THREE.Group();
+
+    // 工位颜色
+    const deskColors = [0x48bb78, 0x4299e1, 0xed8936, 0x9f7aea, 0xf56565];
+
+    // 创建单个工位
+    function createDesk(x, z, name, person, title) {
+      const group = new THREE.Group();
+      
+      // 桌面
+      const deskGeo = new THREE.BoxGeometry(2, 0.1, 1.2);
+      const deskMat = new THREE.MeshStandardMaterial({ color: 0x8b7355 });
+      const desk = new THREE.Mesh(deskGeo, deskMat);
+      desk.position.y = 0.8;
+      desk.castShadow = true;
+      desk.receiveShadow = true;
+      group.add(desk);
+
+      // 桌腿
+      const legGeo = new THREE.BoxGeometry(0.1, 0.8, 0.1);
+      const legMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
+      const positions = [[-0.9, -0.5], [0.9, -0.5], [-0.9, 0.5], [0.9, 0.5]];
+      positions.forEach(pos => {
+        const leg = new THREE.Mesh(legGeo, legMat);
+        leg.position.set(pos[0], 0.4, pos[1]);
+        leg.castShadow = true;
+        group.add(leg);
+      });
+
+      // 显示器
+      const screenGeo = new THREE.BoxGeometry(0.8, 0.6, 0.05);
+      const screenMat = new THREE.MeshStandardMaterial({ color: 0x1a202c });
+      const screen = new THREE.Mesh(screenGeo, screenMat);
+      screen.position.set(0, 1.3, -0.3);
+      screen.castShadow = true;
+      group.add(screen);
+
+      // 屏幕亮光
+      const glowGeo = new THREE.BoxGeometry(0.7, 0.5, 0.01);
+      const glowMat = new THREE.MeshBasicMaterial({ color: 0x4fd1c5 });
+      const glow = new THREE.Mesh(glowGeo, glowMat);
+      glow.position.set(0, 1.3, -0.27);
+      group.add(glow);
+
+      // 键盘
+      const kbGeo = new THREE.BoxGeometry(0.5, 0.05, 0.2);
+      const kbMat = new THREE.MeshStandardMaterial({ color: 0x2d3748 });
+      const keyboard = new THREE.Mesh(kbGeo, kbMat);
+      keyboard.position.set(0, 0.88, 0.1);
+      group.add(keyboard);
+
+      // 简单人物（卡通）
+      const personGroup = new THREE.Group();
+      
+      // 身体
+      const bodyGeo = new THREE.CylinderGeometry(0.25, 0.3, 0.8, 8);
+      const bodyColor = deskColors[Math.floor(Math.random() * deskColors.length)];
+      const bodyMat = new THREE.MeshStandardMaterial({ color: bodyColor });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 1.4;
+      body.castShadow = true;
+      personGroup.add(body);
+
+      // 头
+      const headGeo = new THREE.SphereGeometry(0.25, 16, 16);
+      const headMat = new THREE.MeshStandardMaterial({ color: 0xfbd38d });
+      const head = new THREE.Mesh(headGeo, headMat);
+      head.position.y = 2;
+      head.castShadow = true;
+      personGroup.add(head);
+
+      // 眼睛
+      const eyeGeo = new THREE.SphereGeometry(0.03, 8, 8);
+      const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1a202c });
+      const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+      leftEye.position.set(-0.08, 2.05, 0.2);
+      personGroup.add(leftEye);
+      const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+      rightEye.position.set(0.08, 2.05, 0.2);
+      personGroup.add(rightEye);
+
+      personGroup.position.set(0, 0, 0.3);
+      group.add(personGroup);
+
+      group.position.set(x, 0, z);
+      group.userData = { name, person, title, type: 'desk' };
+      
+      return group;
+    }
+
+    // 左侧工位（3排×6个）
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 6; col++) {
+        const x = -10 + col * 3.5;
+        const z = -8 + row * 4;
+        const desk = createDesk(x, z, `左侧${row*6+col+1}号工位`, `员工${row*6+col+1}`, '财务专员');
+        desks.push(desk);
+        deskGroup.add(desk);
+      }
+    }
+
+    // 右侧工位（3排×6个）
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 6; col++) {
+        const x = 10 - col * 3.5;
+        const z = -8 + row * 4;
+        const desk = createDesk(x, z, `右侧${row*6+col+1}号工位`, `员工${18+row*6+col+1}`, '财务专员');
+        desks.push(desk);
+        deskGroup.add(desk);
+      }
+    }
+
+    scene.add(deskGroup);
+
+    // 后方文化墙
+    const wallGroup = new THREE.Group();
+
+    // 主墙
+    const mainWallGeo = new THREE.BoxGeometry(25, 8, 0.3);
+    const mainWallMat = new THREE.MeshStandardMaterial({ color: 0x4a5568 });
+    const mainWall = new THREE.Mesh(mainWallGeo, mainWallMat);
+    mainWall.position.set(0, 4, -15);
+    mainWall.castShadow = true;
+    mainWall.receiveShadow = true;
+    mainWall.userData = { type: 'wall' };
+    wallGroup.add(mainWall);
+
+    // 文化墙标题
+    const titleGeo = new THREE.BoxGeometry(10, 1.5, 0.1);
+    const titleMat = new THREE.MeshStandardMaterial({ color: 0xed8936 });
+    const title = new THREE.Mesh(titleGeo, titleMat);
+    title.position.set(0, 6.5, -14.8);
+    wallGroup.add(title);
+
+    // 12个月展示区（分成3排4列）
+    const monthGroup = new THREE.Group();
+    for (let i = 0; i < 12; i++) {
+      const row = Math.floor(i / 4);
+      const col = i % 4;
+      const monthGeo = new THREE.BoxGeometry(2, 1.5, 0.1);
+      const monthColors = [0x48bb78, 0x4299e1, 0xed8936, 0x9f7aea, 0xf56565, 0x38b2ac, 0x667eea, 0xf6ad55, 0xfc8181, 0x68d391, 0x63b3ed, 0x4fd1c5];
+      const monthMat = new THREE.MeshStandardMaterial({ color: monthColors[i] });
+      const month = new THREE.Mesh(monthGeo, monthMat);
+      month.position.set(-8 + col * 5, 4 - row * 2, -14.7);
+      monthGroup.add(month);
+    }
+    wallGroup.add(monthGroup);
+
+    // 表彰墙
+    const awardGeo = new THREE.BoxGeometry(8, 3, 0.1);
+    const awardMat = new THREE.MeshStandardMaterial({ color: 0xf6e05e });
+    const award = new THREE.Mesh(awardGeo, awardMat);
+    award.position.set(8, 4.5, -14.7);
+    wallGroup.add(award);
+
+    // 奖杯装饰
+    const trophyGeo = new THREE.ConeGeometry(0.3, 0.8, 8);
+    const trophyMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.2 });
+    for (let i = 0; i < 3; i++) {
+      const trophy = new THREE.Mesh(trophyGeo, trophyMat);
+      trophy.position.set(6.5 + i * 1.5, 4, -14.6);
+      wallGroup.add(trophy);
+    }
+
+    scene.add(wallGroup);
+
+    // 标注线（从文化墙延伸到前方）
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x667eea, transparent: true, opacity: 0.3 });
+    const linePoints = [
+      new THREE.Vector3(0, 0.1, -14),
+      new THREE.Vector3(0, 0.1, 10)
+    ];
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(linePoints);
+    const line = new THREE.Line(lineGeo, lineMat);
+    scene.add(line);
+
+    // 房间边界（简单隔断）
+    const partitionGeo = new THREE.BoxGeometry(0.2, 3, 20);
+    const partitionMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, transparent: true, opacity: 0.5 });
+
+    const leftPart = new THREE.Mesh(partitionGeo, partitionMat);
+    leftPart.position.set(-18, 1.5, -5);
+    scene.add(leftPart);
+
+    const rightPart = new THREE.Mesh(partitionGeo, partitionMat);
+    rightPart.position.set(18, 1.5, -5);
+    scene.add(rightPart);
+
+    // 隐藏加载提示
+    document.getElementById('loading').style.display = 'none';
+
+    // 射线检测
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    function onMouseClick(event) {
+      mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(scene.children, true);
+      
+      for (let intersect of intersects) {
+        let obj = intersect.object;
+        while (obj.parent && !obj.userData.type) {
+          obj = obj.parent;
+        }
+        
+        if (obj.userData.type === 'desk') {
+          showDeskInfo(obj.userData);
+          return;
+        } else if (obj.userData.type === 'wall') {
+          showWallInfo();
+          return;
+        }
+      }
+      
+      closeDeskInfo();
+      closeWallInfo();
+    }
+
+    function showDeskInfo(data) {
+      const info = document.getElementById('desk-info');
+      document.getElementById('desk-name').textContent = data.name;
+      document.getElementById('desk-person').textContent = '👤 ' + data.person;
+      document.getElementById('desk-title').textContent = '💼 ' + data.title;
+      info.style.display = 'block';
+    }
+
+    function closeDeskInfo() {
+      document.getElementById('desk-info').style.display = 'none';
+    }
+
+    function showWallInfo() {
+      document.getElementById('back-wall-info').style.display = 'block';
+    }
+
+    function closeWallInfo() {
+      document.getElementById('back-wall-info').style.display = 'none';
+    }
+
+    window.closeDeskInfo = closeDeskInfo;
+
+    renderer.domElement.addEventListener('click', onMouseClick);
+
+    // 窗口大小调整
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // 动画循环
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
